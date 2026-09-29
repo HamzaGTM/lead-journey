@@ -1,0 +1,1171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>QuickStart Lead Journey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one fixed 3D canvas of the whole lead pipeline; story cards scroll over it on the left and fly the camera node by node. */
+:root {
+  --bg: #070D18;
+  --panel: rgba(13, 21, 37, 0.78);
+  --panel-solid: #0D1525;
+  --line: rgba(150, 178, 220, 0.16);
+  --fg: #EAF0F8;
+  --muted: #93A3BB;
+  --node: #16233A;
+  --grid: #4E6283;
+  --lead: #FF6A3D;
+  --router: #8DB2FF;
+  --track: #3AD6C2;
+  --window: #FFCF5C;
+  --exit: #5FE3A0;
+  --reengage: #B79DFF;
+  --btn: #FF6A3D;
+  --btn-fg: #1A0A04;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #EDF1F7; --panel: rgba(255, 255, 255, 0.84); --panel-solid: #FFFFFF;
+    --line: rgba(28, 58, 85, 0.13); --fg: #0E1A2C; --muted: #56657B; --node: #FFFFFF; --grid: #9DAAC0;
+    --lead: #FF5722; --router: #2F5FD0; --track: #0A9784; --window: #B07B00; --exit: #168C55; --reengage: #6A4BD3;
+    --btn: #1C3A55; --btn-fg: #FFFFFF; color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #EDF1F7; --panel: rgba(255, 255, 255, 0.84); --panel-solid: #FFFFFF;
+  --line: rgba(28, 58, 85, 0.13); --fg: #0E1A2C; --muted: #56657B; --node: #FFFFFF; --grid: #9DAAC0;
+  --lead: #FF5722; --router: #2F5FD0; --track: #0A9784; --window: #B07B00; --exit: #168C55; --reengage: #6A4BD3;
+  --btn: #1C3A55; --btn-fg: #FFFFFF; color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: auto; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; }
+
+#stage { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; display: block; }
+#tags { position: fixed; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+.no-webgl #stage { display: none; }
+.no-webgl body, body.no-webgl { background: radial-gradient(1200px 700px at 75% 40%, color-mix(in srgb, var(--router) 14%, transparent), transparent 70%), var(--bg); }
+
+.tag { position: absolute; left: 0; top: 0; white-space: nowrap; font-family: var(--f-mono); font-size: 11.5px; letter-spacing: 0.04em; color: var(--fg); opacity: 0; will-change: transform, opacity; text-shadow: 0 0 8px var(--bg), 0 0 3px var(--bg); }
+.tag b { font-weight: 500; }
+.tag.node { text-transform: uppercase; color: var(--muted); font-size: 10.5px; letter-spacing: 0.1em; }
+.tag.lane { color: var(--track); font-size: 12px; }
+.tag.exit { color: var(--exit); font-size: 12px; padding: 3px 9px; border: 1px solid color-mix(in srgb, var(--exit) 45%, transparent); border-radius: 99px; background: color-mix(in srgb, var(--bg) 70%, transparent); }
+.tag.window { color: var(--window); }
+.tag.re { color: var(--reengage); font-size: 12px; }
+.tag.dial { color: var(--muted); font-size: 11px; }
+
+/* Top bar */
+.top { position: fixed; top: env(safe-area-inset-top, 0px); left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px max(16px, 3vw); pointer-events: none; }
+.brand { display: flex; align-items: center; gap: 10px; font-family: var(--f-display); font-weight: 600; font-size: 15px; letter-spacing: -0.01em; pointer-events: auto; }
+.brand svg { width: 22px; height: 22px; }
+.brand span { color: var(--muted); font-family: var(--f-body); font-weight: 500; font-size: 13px; }
+.progress { position: fixed; top: 0; left: 0; height: 2px; width: 100%; transform-origin: 0 50%; transform: scaleX(0); background: var(--lead); z-index: 6; }
+
+/* Chapter rail */
+.rail { position: fixed; right: max(12px, 2vw); top: 50%; transform: translateY(-50%); z-index: 5; display: flex; flex-direction: column; gap: 4px; }
+.rail button { all: unset; cursor: pointer; display: flex; align-items: center; justify-content: flex-end; gap: 10px; height: 22px; padding: 0 2px; }
+.rail button i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); opacity: 0.45; transition: transform .25s, opacity .25s, background .25s; }
+.rail button span { font-size: 12px; color: var(--fg); opacity: 0; transform: translateX(6px); transition: opacity .2s, transform .2s; white-space: nowrap; background: var(--panel-solid); border: 1px solid var(--line); padding: 1px 8px; border-radius: 6px; }
+.rail button:hover span, .rail button:focus-visible span { opacity: 1; transform: none; }
+.rail button:focus-visible i { outline: 2px solid var(--lead); outline-offset: 3px; }
+.rail button.on i { background: var(--lead); opacity: 1; transform: scale(1.5); }
+
+/* Story */
+main { position: relative; z-index: 2; }
+.chapter { min-height: 100vh; display: flex; align-items: center; padding-inline: max(16px, 5vw); padding-block: 12vh; }
+.card { width: 100%; max-width: 450px; min-width: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 28px 28px 26px; backdrop-filter: blur(14px) saturate(1.2); -webkit-backdrop-filter: blur(14px) saturate(1.2); display: flex; flex-direction: column; gap: 14px; }
+.eyebrow { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.eyebrow::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--router)); box-shadow: 0 0 10px var(--c, var(--router)); }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; text-wrap: balance; letter-spacing: -0.02em; }
+h1 { font-size: clamp(38px, 5.4vw, 66px); line-height: 1.02; font-weight: 700; }
+h2 { font-size: clamp(26px, 2.6vw, 34px); line-height: 1.1; font-weight: 700; }
+h3 { font-size: 18px; line-height: 1.25; font-weight: 600; letter-spacing: -0.01em; }
+p { margin: 0; color: color-mix(in srgb, var(--fg) 86%, var(--muted)); }
+.lead-in { font-size: 18px; line-height: 1.55; color: var(--fg); max-width: 34em; }
+.note { font-size: 14px; color: var(--muted); padding-left: 12px; border-left: 2px solid color-mix(in srgb, var(--c, var(--router)) 60%, transparent); }
+.why { display: grid; gap: 4px; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--c, var(--router)) 9%, transparent); border: 1px solid color-mix(in srgb, var(--c, var(--router)) 26%, transparent); font-size: 14.5px; }
+.why strong { font-family: var(--f-mono); font-weight: 500; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--c, var(--router)); }
+.mono { font-family: var(--f-mono); }
+
+/* Hero */
+.hero { min-height: 92vh; padding-top: 16vh; align-items: flex-start; }
+.hero .card { max-width: 620px; background: transparent; border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; padding: 0; gap: 22px; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+.stat { padding: 14px 14px 12px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stat b { font-family: var(--f-display); font-size: 24px; line-height: 1.05; font-weight: 700; letter-spacing: -0.02em; color: var(--c); }
+.stat span { font-size: 12.5px; line-height: 1.35; color: var(--muted); }
+.scroll-hint { display: inline-flex; align-items: center; gap: 10px; font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.scroll-hint i { width: 1px; height: 28px; background: linear-gradient(var(--lead), transparent); animation: drip 1.8s ease-in-out infinite; }
+@keyframes drip { 0%,100% { transform: scaleY(.4); transform-origin: top; } 50% { transform: scaleY(1); transform-origin: top; } }
+
+/* Chips */
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip { all: unset; cursor: pointer; font-size: 13px; line-height: 1; padding: 8px 11px; border-radius: 99px; border: 1px solid color-mix(in srgb, var(--c) 40%, var(--line)); color: var(--fg); background: color-mix(in srgb, var(--c) 8%, transparent); transition: background .2s, transform .15s; }
+.chip:hover { background: color-mix(in srgb, var(--c) 20%, transparent); }
+.chip:active { transform: scale(.97); }
+.chip:focus-visible { outline: 2px solid var(--c); outline-offset: 2px; }
+.chip[aria-pressed="true"] { background: var(--c); color: var(--bg); border-color: var(--c); }
+
+/* Router step strip */
+.steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+.steps i { height: 4px; border-radius: 4px; background: var(--line); }
+.steps i.done { background: color-mix(in srgb, var(--router) 55%, transparent); }
+.steps i.now { background: var(--router); box-shadow: 0 0 10px var(--router); }
+
+/* Cadence timeline */
+.cadence { position: relative; margin: 14px 4px 4px; height: 74px; }
+.cadence .bar { position: absolute; left: 0; right: 0; top: 32px; height: 2px; background: var(--line); }
+.cadence .tick { position: absolute; top: 29px; width: 1px; height: 8px; background: var(--line); }
+.cadence .dot { position: absolute; top: 24px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+.cadence .dot b { width: 18px; height: 18px; border-radius: 50%; background: var(--track); box-shadow: 0 0 12px color-mix(in srgb, var(--track) 70%, transparent); display: grid; place-items: center; font-family: var(--f-mono); font-size: 10px; color: var(--bg); font-weight: 500; }
+.cadence .dot small { position: absolute; top: 24px; font-family: var(--f-mono); font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.cadence .gap { position: absolute; top: 2px; transform: translateX(-50%); font-family: var(--f-mono); font-size: 10.5px; color: var(--track); white-space: nowrap; }
+
+/* Send window tool */
+.tool { display: grid; gap: 12px; padding: 16px; border-radius: 14px; background: color-mix(in srgb, var(--panel-solid) 70%, transparent); border: 1px solid var(--line); }
+.tool label { font-size: 13.5px; color: var(--muted); display: flex; justify-content: space-between; gap: 10px; }
+.tool label output { font-family: var(--f-mono); color: var(--fg); font-size: 14px; }
+input[type=range] { width: 100%; accent-color: var(--lead); height: 22px; margin: 0; }
+.daybar { position: relative; height: 26px; border-radius: 6px; background: color-mix(in srgb, var(--muted) 14%, transparent); overflow: hidden; }
+.daybar .win { position: absolute; top: 0; bottom: 0; left: 50%; width: 29.1667%; background: color-mix(in srgb, var(--window) 32%, transparent); border-left: 1px solid var(--window); border-right: 1px solid var(--window); }
+.daybar .held { position: absolute; top: 11px; height: 4px; background: repeating-linear-gradient(90deg, var(--lead) 0 4px, transparent 4px 7px); }
+.daybar .pin { position: absolute; top: 4px; width: 3px; height: 18px; border-radius: 2px; transform: translateX(-50%); }
+.daybar .pin.sub { background: var(--lead); }
+.daybar .pin.send { background: var(--exit); }
+.dayscale { display: flex; justify-content: space-between; font-family: var(--f-mono); font-size: 10.5px; color: var(--muted); margin-top: -6px; }
+.result { display: grid; gap: 2px; }
+.result b { font-family: var(--f-display); font-size: 21px; font-weight: 600; letter-spacing: -0.01em; }
+.result span { font-size: 13.5px; color: var(--muted); }
+
+/* Returning lead comparison */
+.paths { display: grid; gap: 12px; }
+.path { display: grid; gap: 8px; }
+.path > span { font-family: var(--f-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--c); }
+.path ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.path li { font-size: 12.5px; padding: 5px 9px; border-radius: 8px; background: color-mix(in srgb, var(--c) 10%, transparent); border: 1px solid color-mix(in srgb, var(--c) 28%, transparent); }
+.path li.skip { opacity: 0.4; text-decoration: line-through; background: transparent; border-style: dashed; }
+.path li.arrow { all: unset; color: var(--muted); font-size: 12px; }
+
+/* FAQ */
+.faq { min-height: auto; padding-block: 18vh 10vh; display: block; }
+.faq-inner { max-width: 1120px; margin: 0 auto; display: grid; gap: 28px; }
+.faq-head { max-width: 640px; display: grid; gap: 12px; padding: 24px 26px; border-radius: 20px; background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.q { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px 20px 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.q .seen { font-family: var(--f-display); font-size: 18px; font-weight: 600; line-height: 1.3; letter-spacing: -0.01em; }
+.q .seen::before { content: "\201C"; color: var(--c); margin-right: 1px; }
+.q .seen::after { content: "\201D"; color: var(--c); }
+.q .k { font-family: var(--f-mono); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c); }
+.q p { font-size: 14.5px; }
+.q .by { margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+.close { padding: 26px; border-radius: 20px; background: var(--panel); border: 1px solid var(--line); display: grid; gap: 14px; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); }
+.line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14px; }
+.line b { font-weight: 600; padding: 6px 11px; border-radius: 9px; background: color-mix(in srgb, var(--c) 12%, transparent); border: 1px solid color-mix(in srgb, var(--c) 30%, transparent); }
+.line i { font-style: normal; color: var(--muted); }
+
+/* Speed to contact */
+.waits { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; counter-reset: w; }
+.waits li { counter-increment: w; display: grid; grid-template-columns: 26px minmax(0, 1fr); column-gap: 10px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line); background: color-mix(in srgb, var(--router) 6%, transparent); }
+.waits li::before { content: counter(w); grid-row: span 2; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-family: var(--f-mono); font-size: 12px; color: var(--bg); background: var(--router); }
+.waits li b { font-weight: 600; }
+.waits li span { font-size: 14px; color: var(--muted); }
+.opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.opt { all: unset; cursor: pointer; text-align: center; padding: 9px 6px; border-radius: 10px; border: 1px solid var(--line); font-size: 14px; font-weight: 500; display: grid; gap: 1px; }
+.opt small { font-family: var(--f-mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.opt:hover { background: color-mix(in srgb, var(--lead) 10%, transparent); }
+.opt:focus-visible { outline: 2px solid var(--lead); outline-offset: 2px; }
+.opt[aria-pressed="true"] { background: var(--lead); border-color: var(--lead); color: var(--btn-fg); }
+.opt[aria-pressed="true"] small { color: inherit; opacity: 0.75; }
+.race { height: 8px; border-radius: 8px; background: color-mix(in srgb, var(--muted) 16%, transparent); overflow: hidden; }
+.race i { display: block; height: 100%; width: 100%; border-radius: 8px; background: var(--lead); transition: width .6s cubic-bezier(.2,.8,.2,1); }
+
+@media (max-width: 900px) {
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .rail { display: none; }
+  .chapter { align-items: flex-end; padding-block: 6vh 4vh; min-height: 105vh; }
+  .hero { min-height: auto; padding-top: 12vh; padding-bottom: 38vh; align-items: flex-start; }
+  .card { max-width: none; padding: 22px 20px; }
+  .lead-in { font-size: 16.5px; }
+  .brand span { display: none; }
+  .faq { padding-block: 10vh 8vh; }
+  .grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-hint i { animation: none; }
+  .rail button i, .rail button span { transition: none; }
+}
+</style>
+</head>
+<body>
+
+<canvas id="stage" aria-hidden="true"></canvas>
+<div id="tags" aria-hidden="true"></div>
+<div class="progress" id="progress"></div>
+
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.8 21 7v10l-9 5.2L3 17V7z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 8.2 15.3 10v4L12 15.8 8.7 14v-4z" fill="var(--lead)"/></svg>
+    QuickStart <span>How our lead automation works</span>
+  </div>
+</header>
+
+<nav class="rail" id="rail" aria-label="Chapters"></nav>
+
+<main>
+  <section class="chapter hero" data-ch="hero" data-label="Start">
+    <div class="card">
+      <div class="eyebrow" style="--c: var(--lead)">A guided tour of our HubSpot lead automation</div>
+      <h1>What happens after a student fills out a form</h1>
+      <p class="lead-in">Follow one new lead through HubSpot. You will see every step it takes, how long each wait is, and when a message is allowed to go out. Some of these behaviours can look like mistakes from the outside. Each one is set up on purpose, and this page shows why.</p>
+      <div class="stats">
+        <div class="stat" style="--c: var(--router)"><b>5 min</b><span>wait before the welcome email and text</span></div>
+        <div class="stat" style="--c: var(--router)"><b>1 day</b><span>business day before program emails begin</span></div>
+        <div class="stat" style="--c: var(--track)"><b>5 + 5</b><span>emails and texts in every program track</span></div>
+        <div class="stat" style="--c: var(--window)"><b>12 to 7 pm</b><span>EDT, the only hours messages go out</span></div>
+      </div>
+      <div class="scroll-hint"><i></i>Scroll to follow a lead</div>
+    </div>
+  </section>
+
+  <section class="chapter" data-ch="form" data-label="The form">
+    <div class="card">
+      <div class="eyebrow" style="--c: var(--lead)">Where it starts</div>
+      <h2>A student asks for information</h2>
+      <p>A student lands on one of our bootcamp pages and fills out the Request More Information form: full name, email address and mobile number.</p>
+      <p>By submitting, they agree to receive calls and texts about the program. HubSpot also records which program they asked about. That one detail decides which emails they get later.</p>
+    </div>
+  </section>
+
+  <section class="chapter" data-ch="new" data-label="New lead">
+    <div class="card">
+      <div class="eyebrow" style="--c: var(--lead)">Inside HubSpot</div>
+      <h2>HubSpot marks them as a New lead</h2>
+      <p>The form sends the student into HubSpot. A student we have never seen before gets the lead status <b>New</b>.</p>
+      <p>Lead status is the field that runs the whole system. Our reps change it as they work a lead, and some changes happen automatically. The automation watches it at every step.</p>
+      <p class="note" style="--c: var(--router)">Every New lead goes into the <b>router</b>, a short workflow that welcomes the student and then sends them to the right program.</p>
+    </div>
+  </section>
+
+  <section class="chapter" data-ch="exit" data-label="The exit rule">
+    <div class="card" style="--c: var(--exit)">
+      <div class="eyebrow" style="--c: var(--exit)">One rule that applies everywhere</div>
+      <h2>When a person takes over, the automation steps aside</h2>
+      <p>If a lead's status changes to any of these, HubSpot removes them from every nurture workflow straight away. It does not matter where they are, even halfway through a wait.</p>
+      <div class="chips" id="exit-chips" style="--c: var(--exit)"></div>
+      <p class="note" style="--c: var(--exit)">A lifecycle stage of Opportunity or Customer removes them too. Tap a status to watch a lead leave the flow.</p>
+      <div class="why"><strong>Why</strong>Once a rep is talking to a student, or the student has enrolled, automated follow ups would talk over them. So if a lead stops getting emails, check the lead status first. A change there is the usual reason.</div>
+    </div>
+  </section>
+
+  <section class="chapter" data-ch="mc" data-label="Marketing contact">
+    <div class="card">
+      <div class="eyebrow">Router · step 1 of 6</div>
+      <div class="steps" aria-hidden="true"><i class="now"></i><i></i><i></i><i></i><i></i><i></i></div>
+      <h2>Set as a marketing contact</h2>
+      <p>The first thing the router does is mark the student as a marketing contact. HubSpot only sends marketing emails to marketing contacts, so without this step none of the emails below could go out.</p>
+    </div>
+  </section>
+
+  <section class="chapter" data-ch="wait5" data-label="5 minute wait">
+    <div class="card">
+      <div class="eyebrow">Router · step 2 of 6</div>
+      <div class="steps" aria-hidden="true"><i class="done"></i><i class="now"></i><i></i><i></i><i></i><i></i></div>
+      <h2>Wait 5 minutes</h2>
+      <p>The router pauses for five minutes before the first message. This wait is set on purpose.</p>
+      <p class="note">If you test the form yourself, expect the first email a few minutes later, and only inside the send window further down this page.</p>
+    </div>
+  </section>
+
+  <section class="chapter" data-ch="welcome" data-label="Welcome">
+    <div class="card">
+      <div class="eyebrow">Router · steps 3 and 4 of 6</div>
+      <div class="steps" aria-hidden="true"><i class="done"></i><i class="done"></i><i class="now"></i><i class="now"></i><i></i><i></i></div>
+      <h2>A welcome email, then a welcome text</h2>
+      <p>The student gets a thank you email, followed by a text message sent through Kixie, our calling and texting tool.</p>
+      <p>These two messages are the same for every student, whatever program they picked. Messages about their specific program start after the next step.</p>
+    </div>
+  </section>
+
+  <section class="chapter" data-ch="wait1" data-label="1 day wait">
+    <div class="card">
+      <div class="eyebrow">Router · step 5 of 6</div>
+      <div class="steps" aria-hidden="true"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="now"></i><i></i></div>
+      <h2>Wait 1 business day</h2>
+      <p>The router now waits one business day. Weekends do not count, so a student who arrives on a Friday moves on the following Monday.</p>
+    </div>
+  </section>
+
+  <section class="chapter" data-ch="branch" data-label="Program branch">
+    <div class="card" style="--c: var(--track)">
+      <div class="eyebrow">Router · step 6 of 6</div>
+      <div class="steps" aria-hidden="true"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="now"></i></div>
+      <h2>Sorted by program</h2>
+      <p>HubSpot reads the program the student asked about and hands them to that program's own track. There are six:</p>
+      <div class="chips" id="lane-chips-a" style="--c: var(--track)"></div>
+      <p class="note" style="--c: var(--track)">If the program does not match any of the six, the student goes to the Cybersecurity track, so every lead still gets follow up. Kickstarter now runs inside the downsell campaign instead of having its own track.</p>
+    </div>
+  </section>
+
+  <section class="chapter" data-ch="tracks" data-label="Program tracks">
+    <div class="card" style="--c: var(--track)">
+      <div class="eyebrow" style="--c: var(--track)">Every program track</div>
+      <h2>5 emails and 5 texts over about three weeks</h2>
+      <p>Each program has its own copy, but every track keeps the same rhythm. Each touch is one email plus one text, spaced out in business days.</p>
+      <div class="cadence" id="cadence" aria-label="Email 1 on day 0, email 2 on day 3, email 3 on day 6, email 4 on day 10, email 5 on day 15"></div>
+      <p class="note" style="--c: var(--track)">That is about 15 business days from the first program email to the last. The exit rule still applies at every point, so a lead who books a meeting leaves the track right away.</p>
+      <div class="chips" id="lane-chips-b" style="--c: var(--track)"></div>
+    </div>
+  </section>
+
+  <section class="chapter" data-ch="window" data-label="Send window">
+    <div class="card" style="--c: var(--window)">
+      <div class="eyebrow" style="--c: var(--window)">The send window</div>
+      <h2>Messages only go out between 12 pm and 7 pm EDT</h2>
+      <p>Every email and text in these workflows waits for this window. If a step comes due outside it, HubSpot holds that message and sends it when the window opens again.</p>
+      <div class="tool">
+        <label for="t-sub">Student submits the form at <output id="o-sub">9:30 am</output></label>
+        <input id="t-sub" type="range" min="0" max="1435" step="5" value="570" aria-describedby="o-res">
+        <div>
+          <div class="daybar" aria-hidden="true"><div class="win"></div><div class="held" id="b-held"></div><div class="pin sub" id="b-sub"></div><div class="pin send" id="b-send"></div></div>
+          <div class="dayscale" aria-hidden="true"><span>12 am</span><span>6 am</span><span>12 pm</span><span>6 pm</span><span>12 am</span></div>
+        </div>
+        <div class="result" id="o-res" aria-live="polite"><b id="o-send">Welcome sends at 12:00 pm</b><span id="o-why">Held 2 h 25 min until the window opens.</span></div>
+      </div>
+      <div class="why"><strong>Requested by the admissions advisors</strong>Before the window existed, texts could reach students at any hour, including 3 am. The advisors asked for it, and it was set to match the hours they can follow up.</div>
+    </div>
+  </section>
+
+  <section class="chapter" data-ch="reengage" data-label="Returning leads">
+    <div class="card" style="--c: var(--reengage)">
+      <div class="eyebrow" style="--c: var(--reengage)">When a lead comes back</div>
+      <h2>A disqualified student who returns is marked Re-engaged</h2>
+      <p>Some students tell us no, and a rep marks them Disqualified. The exit rule takes them out of the automation.</p>
+      <p>If that student fills out a form again later, HubSpot marks them <b>Re-engaged</b> automatically. A separate workflow picks them up and sends them straight into their program's track.</p>
+      <div class="paths">
+        <div class="path" style="--c: var(--router)"><span>First time</span>
+          <ol><li>Form</li><li class="arrow">→</li><li>New</li><li class="arrow">→</li><li>Marketing contact</li><li class="arrow">→</li><li>Wait 5 min</li><li class="arrow">→</li><li>Welcome email + text</li><li class="arrow">→</li><li>Wait 1 day</li><li class="arrow">→</li><li>Program track</li></ol>
+        </div>
+        <div class="path" style="--c: var(--reengage)"><span>Coming back</span>
+          <ol><li>Form</li><li class="arrow">→</li><li>Re-engaged</li><li class="arrow">→</li><li class="skip">Welcome email + text</li><li class="skip">Both waits</li><li class="arrow">→</li><li>Program track</li></ol>
+        </div>
+      </div>
+      <div class="why"><strong>Why no welcome</strong>They already had the welcome the first time. Their first message back is email 1 of their program, still sent inside the 12 pm to 7 pm window.</div>
+    </div>
+  </section>
+
+  <section class="chapter faq" data-ch="faq" data-label="Looks wrong, isn't">
+    <div class="faq-inner">
+      <div class="faq-head">
+        <div class="eyebrow" style="--c: var(--exit)">Quick reference</div>
+        <h2>Looks like a problem, works as designed</h2>
+        <p>These are the things people most often report as bugs. Each one is the system doing exactly what it was set up to do.</p>
+      </div>
+      <div class="grid">
+        <article class="q" style="--c: var(--window)">
+          <div class="seen">I filled out the form and no email came.</div>
+          <div class="k">What's happening</div>
+          <p>Messages only send between 12 pm and 7 pm EDT. A form filled in the morning gets its welcome at 12 pm. One filled after 7 pm gets it when the window next opens.</p>
+          <div class="by">Send window, requested by the admissions advisors</div>
+        </article>
+        <article class="q" style="--c: var(--router)">
+          <div class="seen">The welcome arrived a few minutes after I submitted.</div>
+          <div class="k">What's happening</div>
+          <p>The router waits five minutes before the first email and text. That wait is part of the design.</p>
+          <div class="by">Router, step 2</div>
+        </article>
+        <article class="q" style="--c: var(--router)">
+          <div class="seen">The program emails didn't start right away.</div>
+          <div class="k">What's happening</div>
+          <p>After the welcome, the router waits one business day before sorting the lead into a program. A lead from Friday starts their program track on Monday.</p>
+          <div class="by">Router, step 5</div>
+        </article>
+        <article class="q" style="--c: var(--exit)">
+          <div class="seen">A lead stopped getting emails partway through.</div>
+          <div class="k">What's happening</div>
+          <p>Their lead status changed. Meeting Booked, Interested, Enrolled, Disqualified and the other exit statuses remove a lead from every workflow, so reps are never talking over the automation.</p>
+          <div class="by">Exit rule, on every workflow</div>
+        </article>
+        <article class="q" style="--c: var(--reengage)">
+          <div class="seen">A returning student never got a welcome email.</div>
+          <div class="k">What's happening</div>
+          <p>They were Disqualified before, so they come back as Re-engaged and go straight to their program's emails. They already had the welcome the first time.</p>
+          <div class="by">Re-engaged workflow</div>
+        </article>
+        <article class="q" style="--c: var(--track)">
+          <div class="seen">A student got Cybersecurity emails without picking it.</div>
+          <div class="k">What's happening</div>
+          <p>When the program on their record does not match one of the six tracks, the router sends them to Cybersecurity, so no lead is left without follow up.</p>
+          <div class="by">Router, step 6</div>
+        </article>
+      </div>
+      <div class="close">
+        <div class="eyebrow" style="--c: var(--lead)">The whole system in one line</div>
+        <div class="line">
+          <b style="--c: var(--lead)">Form</b><i>→</i><b style="--c: var(--lead)">New</b><i>→</i><b style="--c: var(--router)">Welcome after 5 min</b><i>→</i><b style="--c: var(--router)">1 business day</b><i>→</i><b style="--c: var(--track)">Program track, 5 + 5 over 15 days</b>
+        </div>
+        <p>Everything sends between 12 pm and 7 pm EDT. A status change from a rep takes the lead out at any point. A disqualified student who returns skips the welcome and goes straight to their program.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="chapter" data-ch="speed" data-label="Speed to contact">
+    <div class="card" style="--c: var(--lead)">
+      <div class="eyebrow" style="--c: var(--lead)">Speed to contact</div>
+      <h2>How quickly do we reach a new lead?</h2>
+      <p>Only two waits sit between a sign up and our messages, and we set both of them ourselves.</p>
+      <ol class="waits">
+        <li><b>5 minutes after sign up</b><span>Before the welcome email and text. Whatever form they use, the student does not hear from us instantly.</span></li>
+        <li><b>1 business day after the welcome</b><span>Before the student moves into their program track. This wait works well, and we keep it.</span></li>
+      </ol>
+      <p>Nothing else in the router or the program tracks holds up the first message. So the quickest way to reach leads faster is to shorten that first 5 minute wait.</p>
+      <div class="tool">
+        <div class="opts" role="group" aria-label="First wait">
+          <button type="button" class="opt" data-sec="300" aria-pressed="true">5 minutes<small>today</small></button>
+          <button type="button" class="opt" data-sec="30" aria-pressed="false">30 seconds</button>
+          <button type="button" class="opt" data-sec="10" aria-pressed="false">10 seconds</button>
+        </div>
+        <div class="race" aria-hidden="true"><i id="race-bar"></i></div>
+        <div class="result" aria-live="polite"><b id="speed-out">Welcome arrives about 5 minutes after sign up</b><span id="speed-why">This is how the router is set today.</span></div>
+      </div>
+      <p class="note" style="--c: var(--window)">It is one setting on one step of the router. The send window still applies, so a student who signs up outside 12 pm to 7 pm EDT gets the welcome when the window opens.</p>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/environments/RoomEnvironment.js"></script>
+<script>
+(function () {
+  "use strict";
+  var reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var $ = function (s) { return document.querySelector(s); };
+
+  var LANES = [
+    { name: "Cybersecurity", y: 4.5 },
+    { name: "Data Analytics & Visualization", y: 2.7 },
+    { name: "IT Technician", y: 0.9 },
+    { name: "Network Engineering", y: -0.9 },
+    { name: "AI Centric Software Engineering", y: -2.7 },
+    { name: "Cybersecurity Engineer", y: -4.5 }
+  ];
+  var EXITS = ["Meeting Booked", "Interested", "Contacted", "Open Deal", "Enrolled", "Disqualified", "Do Not Use", "Nurture", "Nurture 3 to 6 Months", "Nurture 6 Months", "Nurture No Funding"];
+  var DAYS = [0, 3, 6, 10, 15];
+
+  /* ---------- plain DOM parts (work without WebGL) ---------- */
+  var secs = Array.prototype.slice.call(document.querySelectorAll("[data-ch]"));
+  var ids = secs.map(function (s) { return s.dataset.ch; });
+  var rail = $("#rail");
+  secs.forEach(function (sec, i) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.innerHTML = "<span>" + sec.dataset.label + "</span><i></i>";
+    b.setAttribute("aria-label", "Go to " + sec.dataset.label);
+    b.addEventListener("click", function () { sec.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: i === 0 ? "start" : "center" }); });
+    rail.appendChild(b);
+  });
+  var railBtns = rail.querySelectorAll("button");
+
+  var hooks = { exit: function () {}, lane: function () {}, dial: function () {} };
+
+  var exitWrap = $("#exit-chips");
+  EXITS.forEach(function (name) {
+    var c = document.createElement("button");
+    c.type = "button"; c.className = "chip"; c.textContent = name;
+    c.addEventListener("click", function () { hooks.exit(name); });
+    exitWrap.appendChild(c);
+  });
+
+  var laneBtns = [];
+  ["#lane-chips-a", "#lane-chips-b"].forEach(function (sel) {
+    var wrap = $(sel);
+    LANES.forEach(function (l, i) {
+      var c = document.createElement("button");
+      c.type = "button"; c.className = "chip"; c.textContent = l.name;
+      c.setAttribute("aria-pressed", "false");
+      c.addEventListener("click", function () { setLane(laneFocus === i ? -1 : i); });
+      wrap.appendChild(c);
+      laneBtns.push({ el: c, i: i });
+    });
+  });
+  var laneFocus = -1;
+  function setLane(i) {
+    laneFocus = i;
+    laneBtns.forEach(function (b) { b.el.setAttribute("aria-pressed", String(b.i === i)); });
+    hooks.lane(i);
+  }
+
+  var cad = $("#cadence");
+  var cadHTML = '<div class="bar"></div>';
+  for (var d = 0; d <= 15; d++) cadHTML += '<div class="tick" style="left:' + (d / 15 * 100) + '%"></div>';
+  DAYS.forEach(function (dd, i) {
+    cadHTML += '<div class="dot" style="left:' + (dd / 15 * 100) + '%"><b>' + (i + 1) + '</b><small>Day ' + dd + '</small></div>';
+    if (i) cadHTML += '<div class="gap" style="left:' + ((dd + DAYS[i - 1]) / 2 / 15 * 100) + '%">+' + (dd - DAYS[i - 1]) + ' days</div>';
+  });
+  cad.innerHTML = cadHTML;
+
+  /* Send window calculator */
+  var WIN_OPEN = 12 * 60, WIN_CLOSE = 19 * 60;
+  function fmt(min) {
+    min = ((min % 1440) + 1440) % 1440;
+    var h = Math.floor(min / 60), m = min % 60, ap = h < 12 ? "am" : "pm";
+    var hh = h % 12 === 0 ? 12 : h % 12;
+    return hh + ":" + (m < 10 ? "0" : "") + m + " " + ap;
+  }
+  function dur(min) {
+    var h = Math.floor(min / 60), m = min % 60;
+    return (h ? h + " h " : "") + (m ? m + " min" : (h ? "" : "0 min"));
+  }
+  function sendTime(sub) {
+    var ready = sub + 5;
+    if (ready < WIN_OPEN) return { at: WIN_OPEN, next: false };
+    if (ready < WIN_CLOSE) return { at: ready, next: false };
+    return { at: 1440 + WIN_OPEN, next: true };
+  }
+  var slider = $("#t-sub");
+  function updWindow() {
+    var sub = +slider.value, r = sendTime(sub), held = r.at - sub - 5;
+    $("#o-sub").textContent = fmt(sub);
+    $("#o-send").textContent = "Welcome sends " + (r.next ? "the next day at " : "at ") + fmt(r.at);
+    $("#o-why").textContent = held <= 0 ? "Inside the window, so it goes after the 5 minute wait." :
+      (r.next ? "Past 7 pm, so it is held " + dur(held) + " until the window opens again." : "Held " + dur(held) + " until the window opens at noon.");
+    var a = sub / 1440 * 100, b = Math.min(r.at, 1440) / 1440 * 100;
+    $("#b-sub").style.left = a + "%";
+    $("#b-send").style.left = (r.next ? 100 : b) + "%";
+    $("#b-send").style.opacity = r.next ? 0 : 1;
+    var hb = $("#b-held");
+    hb.style.left = a + "%"; hb.style.width = Math.max(0, (r.next ? 100 : b) - a) + "%";
+    hooks.dial(sub / 60, r.at / 60);
+  }
+  slider.addEventListener("input", updWindow);
+
+  /* Speed to contact options */
+  var speedSec = 300;
+  var SPEED_WHY = { 300: "This is how the router is set today.", 30: "The welcome lands within half a minute of sign up.", 10: "The welcome lands within seconds, while the student is most likely still on our page." };
+  document.querySelectorAll(".opt").forEach(function (b) {
+    b.addEventListener("click", function () {
+      speedSec = +b.dataset.sec;
+      document.querySelectorAll(".opt").forEach(function (o) { o.setAttribute("aria-pressed", String(o === b)); });
+      $("#speed-out").textContent = "Welcome arrives about " + (speedSec === 300 ? "5 minutes" : speedSec + " seconds") + " after sign up";
+      $("#speed-why").textContent = SPEED_WHY[speedSec];
+      $("#race-bar").style.width = Math.max(3, speedSec / 300 * 100) + "%";
+    });
+  });
+  updWindow();
+
+  /* Scroll position as a continuous chapter index */
+  function centers() {
+    return secs.map(function (el) { var r = el.getBoundingClientRect(); return r.top + scrollY + Math.min(r.height, innerHeight * 1.2) / 2; });
+  }
+  function targetS() {
+    var cs = centers(), v = scrollY + innerHeight * 0.5;
+    if (v <= cs[0]) return 0;
+    for (var i = 0; i < cs.length - 1; i++) if (v < cs[i + 1]) return i + (v - cs[i]) / (cs[i + 1] - cs[i]);
+    return cs.length - 1;
+  }
+  var progress = $("#progress"), lastOn = -1;
+  function chrome(s) {
+    var max = document.documentElement.scrollHeight - innerHeight;
+    progress.style.transform = "scaleX(" + (max > 0 ? scrollY / max : 0) + ")";
+    var on = Math.round(s);
+    if (on !== lastOn) { railBtns.forEach(function (b, i) { b.classList.toggle("on", i === on); }); lastOn = on; }
+  }
+
+  /* ---------- 3D ---------- */
+  var canvas = $("#stage");
+  var gl = null;
+  try { if (window.THREE) gl = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false, powerPreference: "high-performance" }); } catch (e) { gl = null; }
+  if (!gl) {
+    document.documentElement.classList.add("no-webgl"); document.body.classList.add("no-webgl");
+    var tickDom = function () { chrome(targetS()); requestAnimationFrame(tickDom); };
+    requestAnimationFrame(tickDom);
+    return;
+  }
+  var renderer = gl;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x070d18, 1);
+
+  var V = function (x, y, z) { return new THREE.Vector3(x, y, z || 0); };
+  var scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x000000, 38, 125);
+  var camera = new THREE.PerspectiveCamera(38, 1, 0.1, 400);
+
+  /* image based lighting for glossy tiles */
+  try {
+    var pmrem = new THREE.PMREMGenerator(renderer);
+    scene.environment = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04).texture;
+  } catch (e) { /* plain lights still work */ }
+
+  /* shared uniforms for animated shaders */
+  var U = { uTime: { value: 0 } };
+
+  /* soft nebula backdrop, drawn on a sphere that rides with the camera */
+  var skyMat = new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false,
+    uniforms: { uTime: U.uTime, uBg: { value: new THREE.Color() }, uA: { value: new THREE.Color() }, uB: { value: new THREE.Color() }, uC: { value: new THREE.Color() }, uAmt: { value: 0.18 } },
+    vertexShader: "varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
+    fragmentShader: [
+      "uniform float uTime, uAmt; uniform vec3 uBg, uA, uB, uC; varying vec3 vDir;",
+      "float h(vec3 p){ p = fract(p*0.3183099+0.1); p *= 17.0; return fract(p.x*p.y*p.z*(p.x+p.y+p.z)); }",
+      "float n3(vec3 x){ vec3 i=floor(x), f=fract(x); f=f*f*(3.0-2.0*f);",
+      " return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),",
+      "            mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z); }",
+      "float fbm(vec3 p){ float a=0.5, s=0.0; for(int i=0;i<5;i++){ s+=a*n3(p); p*=2.03; a*=0.5; } return s; }",
+      "void main(){",
+      " vec3 d = normalize(vDir);",
+      " float t = uTime*0.025;",
+      " float n1 = fbm(d*2.4 + vec3(t, 0.0, -t));",
+      " float n2 = fbm(d*3.3 - vec3(0.0, t*1.3, t));",
+      " vec3 col = uBg;",
+      " col = mix(col, uA, smoothstep(0.45, 0.95, n1) * uAmt * (0.6 + 0.4*d.y));",
+      " col = mix(col, uB, smoothstep(0.55, 1.0, n2) * uAmt * 0.9);",
+      " col = mix(col, uC, smoothstep(0.7, 1.05, n1*n2*1.9) * uAmt * 0.5);",
+      " gl_FragColor = vec4(col, 1.0);",
+      "}"
+    ].join("\n")
+  });
+  var sky = new THREE.Mesh(new THREE.SphereGeometry(300, 48, 32), skyMat);
+  sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
+
+  /* energy that travels along every connector */
+  function flowMat(freq, speed) {
+    return new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, fog: false,
+      uniforms: { uTime: U.uTime, uColor: { value: new THREE.Color() }, uOpacity: { value: 0.5 }, uFreq: { value: freq }, uSpeed: { value: speed }, uBoost: { value: 1 } },
+      vertexShader: "varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }",
+      fragmentShader: [
+        "uniform vec3 uColor; uniform float uTime, uOpacity, uFreq, uSpeed, uBoost; varying vec2 vUv;",
+        "void main(){",
+        " float p = fract(vUv.x*uFreq - uTime*uSpeed);",
+        " float pulse = smoothstep(0.0, 0.06, p) * (1.0 - smoothstep(0.06, 0.42, p));",
+        " float a = uOpacity * (0.42 + 1.1*pulse);",
+        " gl_FragColor = vec4(uColor * (1.0 + pulse*uBoost), a);",
+        "}"
+      ].join("\n")
+    });
+  }
+  var hemi = new THREE.HemisphereLight(0xffffff, 0x223355, 0.85); scene.add(hemi);
+  var sun = new THREE.DirectionalLight(0xffffff, 0.65); sun.position.set(6, 12, 10); scene.add(sun);
+  var leadLight = new THREE.PointLight(0xff6a3d, 1.4, 9, 2); scene.add(leadLight);
+
+  function tok(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function isDark() {
+    var t = document.documentElement.getAttribute("data-theme");
+    if (t === "light") return false; if (t === "dark") return true;
+    return !matchMedia("(prefers-color-scheme: light)").matches;
+  }
+
+  /* textures */
+  function glowTex() {
+    var c = document.createElement("canvas"); c.width = c.height = 128;
+    var x = c.getContext("2d"), g = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+    g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.25, "rgba(255,255,255,.55)"); g.addColorStop(0.6, "rgba(255,255,255,.12)"); g.addColorStop(1, "rgba(255,255,255,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  }
+  var GLOW = glowTex();
+  function rr(x, a, b, w, h, r) {
+    x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath();
+  }
+  function iconTex(kind) {
+    var c = document.createElement("canvas"); c.width = c.height = 256;
+    var x = c.getContext("2d");
+    x.strokeStyle = "#fff"; x.fillStyle = "#fff"; x.lineWidth = 13; x.lineCap = "round"; x.lineJoin = "round";
+    function L(pts) { x.beginPath(); x.moveTo(pts[0], pts[1]); for (var i = 2; i < pts.length; i += 2) x.lineTo(pts[i], pts[i + 1]); x.stroke(); }
+    if (kind === "person") {
+      x.beginPath(); x.arc(112, 96, 36, 0, 7); x.stroke();
+      x.beginPath(); x.arc(112, 214, 72, Math.PI * 1.1, Math.PI * 1.9); x.stroke();
+      L([196, 76, 196, 136]); L([166, 106, 226, 106]);
+    } else if (kind === "mega") {
+      x.beginPath(); x.moveTo(56, 108); x.lineTo(56, 152); x.lineTo(92, 152); x.lineTo(170, 200); x.lineTo(170, 60); x.lineTo(92, 108); x.closePath(); x.stroke();
+      L([100, 154, 114, 204]); L([198, 98, 226, 84]); L([200, 130, 232, 130]); L([198, 162, 226, 176]);
+    } else if (kind === "clock") {
+      x.beginPath(); x.arc(128, 128, 84, 0, 7); x.stroke();
+      L([128, 128, 128, 80]); L([128, 128, 164, 150]);
+      x.beginPath(); x.arc(128, 128, 9, 0, 7); x.fill();
+    } else if (kind === "mail") {
+      rr(x, 42, 70, 172, 116, 16); x.stroke(); L([52, 84, 128, 142, 204, 84]);
+    } else if (kind === "chat") {
+      rr(x, 42, 52, 172, 118, 30); x.stroke(); L([92, 170, 80, 214, 132, 170]);
+      [96, 128, 160].forEach(function (cx) { x.beginPath(); x.arc(cx, 111, 10, 0, 7); x.fill(); });
+    } else if (kind === "day") {
+      rr(x, 50, 62, 156, 142, 18); x.stroke(); L([50, 104, 206, 104]); L([94, 42, 94, 78]); L([162, 42, 162, 78]);
+      x.font = "700 64px system-ui, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("1", 128, 158);
+    } else if (kind === "branch") {
+      L([128, 214, 128, 150]); L([128, 150, 62, 70]); L([128, 150, 128, 58]); L([128, 150, 194, 70]);
+      [[62, 70], [128, 58], [194, 70], [128, 214]].forEach(function (p) { x.beginPath(); x.arc(p[0], p[1], 13, 0, 7); x.fill(); });
+    }
+    var t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+  }
+  function formTex() {
+    var c = document.createElement("canvas"); c.width = 512; c.height = 660;
+    var x = c.getContext("2d");
+    rr(x, 0, 0, 512, 660, 36); x.fillStyle = "#ffffff"; x.fill();
+    x.save(); rr(x, 0, 0, 512, 660, 36); x.clip(); x.fillStyle = "#EEF1F4"; x.fillRect(0, 0, 512, 104); x.restore();
+    x.fillStyle = "#1F2B3B"; x.font = "600 34px system-ui, sans-serif"; x.textBaseline = "middle"; x.fillText("Request More Information", 36, 54);
+    ["Full Name*", "Email Address*", "Mobile Number*"].forEach(function (t, i) {
+      var y = 140 + i * 104; rr(x, 36, y, 440, 78, 10); x.fillStyle = "#F2F4F7"; x.fill();
+      x.fillStyle = "#3A4656"; x.font = "400 28px system-ui, sans-serif"; x.fillText(t, 62, y + 40);
+    });
+    rr(x, 36, 456, 440, 84, 8); x.fillStyle = "#1C3A55"; x.fill();
+    x.fillStyle = "#fff"; x.font = "700 26px system-ui, sans-serif"; x.textAlign = "center"; x.fillText("REQUEST MORE INFO", 256, 499);
+    x.textAlign = "left"; x.fillStyle = "#8A95A3"; x.fillRect(36, 572, 400, 10); x.fillRect(36, 596, 300, 10); x.fillRect(36, 620, 350, 10);
+    var t = new THREE.CanvasTexture(c); t.anisotropy = 8; return t;
+  }
+
+  /* geometry helpers */
+  function roundedShape(w, h, r) {
+    var s = new THREE.Shape(), x = -w / 2, y = -h / 2;
+    s.moveTo(x + r, y); s.lineTo(x + w - r, y); s.quadraticCurveTo(x + w, y, x + w, y + r);
+    s.lineTo(x + w, y + h - r); s.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    s.lineTo(x + r, y + h); s.quadraticCurveTo(x, y + h, x, y + h - r);
+    s.lineTo(x, y + r); s.quadraticCurveTo(x, y, x + r, y); return s;
+  }
+  function glowSprite(scale) {
+    var m = new THREE.SpriteMaterial({ map: GLOW, transparent: true, depthWrite: false, opacity: 1 });
+    var s = new THREE.Sprite(m); s.scale.set(scale, scale, 1); glows.push(m); return s;
+  }
+  var glows = [];
+
+  /* pipeline */
+  var CH = {};
+  function chi(id) { return ids.indexOf(id); }
+  var nodes = [];
+  function tile(o) {
+    var w = o.w || 2.2, h = o.h || 2.2;
+    var g = new THREE.ExtrudeGeometry(roundedShape(w, h, Math.min(w, h) * 0.2), { depth: 0.26, bevelEnabled: true, bevelThickness: 0.08, bevelSize: 0.08, bevelSegments: 3, curveSegments: 10 });
+    g.center();
+    var m = new THREE.MeshPhysicalMaterial({ roughness: 0.26, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.12, emissiveIntensity: 0, envMapIntensity: 0.7 });
+    var grp = new THREE.Group(); grp.position.copy(o.pos);
+    var mesh = new THREE.Mesh(g, m);
+    var edge = new THREE.LineSegments(new THREE.EdgesGeometry(g, 28), new THREE.LineBasicMaterial({ transparent: true, opacity: 0.3, depthWrite: false }));
+    mesh.add(edge);
+    var fw = o.tex ? w * 0.9 : w * 0.6, fh = o.tex ? h * 0.9 : h * 0.6;
+    var face = new THREE.Mesh(new THREE.PlaneGeometry(fw, fh), new THREE.MeshBasicMaterial({ map: o.tex || iconTex(o.icon), transparent: true, depthWrite: false }));
+    face.position.z = 0.23;
+    var halo = glowSprite(Math.max(w, h) * 3.2); halo.position.z = -0.4; halo.material.opacity = 0;
+    grp.add(halo); grp.add(mesh); grp.add(face);
+    if (o.diamond) { mesh.rotation.z = Math.PI / 4; }
+    var ring = null;
+    if (o.ring) {
+      ring = new THREE.Mesh(new THREE.TorusGeometry(Math.max(w, h) * 0.72, 0.035, 8, 90, Math.PI * 1.45), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.6 }));
+      grp.add(ring);
+    }
+    scene.add(grp);
+    var n = { grp: grp, mesh: mesh, edge: edge, face: face, halo: halo, ring: ring, key: o.key || "router", ch: o.ch, h: 0, plain: !!o.tex, x: o.pos.x, top: h / 2 };
+    nodes.push(n); return n;
+  }
+
+  var NODE_DEFS = [
+    { x: 0, icon: null, ch: "form", key: "lead", w: 3, h: 3.86, label: "Request form" },
+    { x: 6, icon: "person", ch: "new", key: "lead", label: "New lead" },
+    { x: 12, icon: "mega", ch: "mc", label: "Marketing contact" },
+    { x: 16, icon: "clock", ch: "wait5", ring: true, label: "Wait 5 min" },
+    { x: 20, icon: "mail", ch: "welcome", label: "Welcome email" },
+    { x: 23.5, icon: "chat", ch: "welcome", label: "Welcome text" },
+    { x: 27.5, icon: "day", ch: "wait1", ring: true, label: "Wait 1 business day" },
+    { x: 32, icon: "branch", ch: "branch", key: "track", w: 2, h: 2, diamond: true, label: "Program branch" }
+  ];
+  var FTEX = formTex();
+  NODE_DEFS.forEach(function (d) {
+    tile({ pos: V(d.x, 0, 0), icon: d.icon, tex: d.icon ? null : FTEX, ch: d.ch, key: d.key, w: d.w, h: d.h, ring: d.ring, diamond: d.diamond });
+  });
+  var NODE_XS = NODE_DEFS.map(function (d) { return d.x; });
+
+  var mainCurve = new THREE.LineCurve3(V(0, 0, 0), V(32, 0, 0));
+  var mainTube = new THREE.Mesh(new THREE.TubeGeometry(mainCurve, 64, 0.05, 8), flowMat(7, 0.35));
+  scene.add(mainTube);
+
+  var LANE_END = 58;
+  var laneSamples = [], laneTubes = [], beads = [];
+  LANES.forEach(function (l, i) {
+    var y = l.y;
+    var curve = new THREE.CatmullRomCurve3([V(32, 0, 0), V(34.4, y * 0.42, 0), V(36.6, y * 0.92, 0), V(38.5, y, 0), V(48, y, 0), V(LANE_END, y, 0)], false, "centripetal");
+    laneSamples.push(curve.getSpacedPoints(500));
+    var tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 220, 0.045, 8), flowMat(5, 0.28 + i * 0.015));
+    scene.add(tube); laneTubes.push(tube);
+    DAYS.forEach(function (dd, k) {
+      var bx = 38.5 + dd * 1.3;
+      var b = new THREE.Mesh(new THREE.SphereGeometry(0.27, 32, 20), new THREE.MeshPhysicalMaterial({ roughness: 0.15, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.08, emissiveIntensity: 0.45 }));
+      b.position.set(bx, y, 0);
+      var sm = new THREE.Mesh(new THREE.SphereGeometry(0.13, 16, 12), b.material);
+      sm.position.set(0.42, 0.3, 0); b.add(sm);
+      var hg = glowSprite(1.8); b.add(hg);
+      scene.add(b); beads.push({ m: b, lane: i, k: k, glow: hg });
+    });
+  });
+  function lanePt(i, x, out) {
+    out = out || new THREE.Vector3();
+    if (x <= 32) return out.set(x, 0, 0);
+    var a = laneSamples[i], lo = 0, hi = a.length - 1;
+    if (x >= a[hi].x) return out.copy(a[hi]);
+    while (hi - lo > 1) { var mid = (lo + hi) >> 1; if (a[mid].x < x) lo = mid; else hi = mid; }
+    var p = a[lo], q = a[hi], t = (x - p.x) / Math.max(1e-6, q.x - p.x);
+    return out.set(p.x + (q.x - p.x) * t, p.y + (q.y - p.y) * t, 0);
+  }
+  function hop(x) {
+    if (x > 33.2) return 0;
+    var best = 99, top = 1.1;
+    for (var i = 0; i < NODE_XS.length; i++) { var d = Math.abs(x - NODE_XS[i]); if (d < best) { best = d; top = nodes[i].top; } }
+    var r = 1.9; if (best >= r) return 0;
+    return (top + 0.55) * Math.sqrt(1 - (best / r) * (best / r));
+  }
+
+  /* exit beams */
+  var BEAMS = [
+    { x: 9, lane: -1, name: "Meeting Booked" },
+    { x: 14, lane: -1, name: "Interested" },
+    { x: 25.5, lane: -1, name: "Contacted" },
+    { x: 43, lane: 2, name: "Open Deal" },
+    { x: 47.5, lane: 0, name: "Disqualified" },
+    { x: 52, lane: 1, name: "Enrolled" }
+  ];
+  BEAMS.forEach(function (b) {
+    var base = lanePt(b.lane < 0 ? 0 : b.lane, b.x);
+    b.base = base.clone();
+    var core = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 7, 8, 1, true), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.5, depthWrite: false }));
+    var soft = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 7, 20, 1, true), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide }));
+    core.position.set(base.x, base.y + 3.5, 0); soft.position.copy(core.position);
+    scene.add(core); scene.add(soft); b.core = core; b.soft = soft;
+  });
+
+  /* re-engage bypass */
+  var bypass = new THREE.CatmullRomCurve3([V(6, 0, 0), V(8.5, 4.2, -1.2), V(16, 8.6, -2.4), V(28, 8.8, -2.2), V(35, 6.2, -0.8), V(38.5, 4.5, 0)], false, "centripetal");
+  var bypassTube = new THREE.Mesh(new THREE.TubeGeometry(bypass, 200, 0.05, 8), flowMat(9, 0.3));
+  scene.add(bypassTube);
+  var bypassPts = bypass.getSpacedPoints(400);
+  function bypassPt(u, out) { var fi = Math.max(0, Math.min(0.99999, u)) * (bypassPts.length - 1), k0 = Math.floor(fi), tt = fi - k0; return out.copy(bypassPts[k0]).lerp(bypassPts[k0 + 1], tt); }
+
+  /* send window dial */
+  var DIAL = V(70, 0, 0), DR = 4;
+  var dial = new THREE.Group(); dial.position.copy(DIAL); scene.add(dial);
+  var dialRing = new THREE.Mesh(new THREE.TorusGeometry(DR, 0.03, 8, 200), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.55 }));
+  dial.add(dialRing);
+  var tickMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.6 });
+  function theta(h) { return Math.PI / 2 - h / 24 * Math.PI * 2; }
+  for (var hh = 0; hh < 24; hh++) {
+    var big = hh % 6 === 0, tk = new THREE.Mesh(new THREE.BoxGeometry(0.05, big ? 0.55 : 0.28, 0.05), tickMat);
+    var th = theta(hh); tk.position.set(Math.cos(th) * (DR - 0.45), Math.sin(th) * (DR - 0.45), 0); tk.rotation.z = th - Math.PI / 2; dial.add(tk);
+  }
+  var winArc = new THREE.Mesh(new THREE.TorusGeometry(DR, 0.17, 12, 120, 7 / 24 * Math.PI * 2), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.95 }));
+  winArc.rotation.z = theta(19); dial.add(winArc);
+  var dialGlow = glowSprite(14); dialGlow.position.z = -1; dial.add(dialGlow);
+  var handGeo = new THREE.BoxGeometry(0.09, DR - 0.7, 0.09); handGeo.translate(0, (DR - 0.7) / 2, 0);
+  var hand = new THREE.Mesh(handGeo, new THREE.MeshBasicMaterial()); hand.position.z = 0.1; dial.add(hand);
+  var hub = new THREE.Mesh(new THREE.CircleGeometry(0.22, 32), hand.material); hub.position.z = 0.12; dial.add(hub);
+  var heldArc = null, heldMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.85 });
+  var sendDot = glowSprite(1.6); dial.add(sendDot);
+  var sendCore = new THREE.Mesh(new THREE.CircleGeometry(0.16, 24), new THREE.MeshBasicMaterial()); dial.add(sendCore);
+  var handTarget = 9.5, handNow = 9.5;
+  hooks.dial = function (h1, h2) {
+    handTarget = h1;
+    if (heldArc) { dial.remove(heldArc); heldArc.geometry.dispose(); heldArc = null; }
+    var len = h2 - h1;
+    if (len > 0.1) {
+      heldArc = new THREE.Mesh(new THREE.TorusGeometry(DR + 0.5, 0.05, 6, 120, len / 24 * Math.PI * 2), heldMat);
+      heldArc.rotation.z = theta(h2); dial.add(heldArc);
+    }
+    var t2 = theta(h2); sendDot.position.set(Math.cos(t2) * (DR + 0.5), Math.sin(t2) * (DR + 0.5), 0.1);
+    sendCore.position.copy(sendDot.position); sendCore.position.z = 0.15;
+  };
+  updWindow();
+
+  /* floor dots and dust */
+  var floorGeo = new THREE.BufferGeometry(), fp = [];
+  for (var fx = -14; fx <= 86; fx += 1.25) for (var fz = -26; fz <= 16; fz += 1.25) fp.push(fx, -7, fz);
+  floorGeo.setAttribute("position", new THREE.Float32BufferAttribute(fp, 3));
+  var floorMat = new THREE.PointsMaterial({ size: 0.07, transparent: true, opacity: 0.55, depthWrite: false });
+  scene.add(new THREE.Points(floorGeo, floorMat));
+  var dustGeo = new THREE.BufferGeometry(), dp = [];
+  for (var k = 0; k < 260; k++) dp.push(-10 + Math.random() * 92, -6 + Math.random() * 20, -22 + Math.random() * 30);
+  dustGeo.setAttribute("position", new THREE.Float32BufferAttribute(dp, 3));
+  var dustMat = new THREE.PointsMaterial({ size: 0.09, map: GLOW, transparent: true, opacity: 0.5, depthWrite: false });
+  var dust = new THREE.Points(dustGeo, dustMat); scene.add(dust);
+
+  /* flowing leads */
+  var LANE_W = [0.42, 0.14, 0.11, 0.11, 0.11, 0.11];
+  function pickLane() { var r = Math.random(), a = 0; for (var i = 0; i < LANE_W.length; i++) { a += LANE_W[i]; if (r < a) return i; } return 0; }
+  var flows = [];
+  function resetFlow(f, initial) {
+    f.lane = pickLane(); f.x = initial ? Math.random() * LANE_END : -1 - Math.random() * 6;
+    f.speed = 2.2 + Math.random() * 1.6; f.rise = -1; f.alpha = 1; f.hist = [];
+    f.beam = null;
+    if (Math.random() < 0.34) {
+      var ok = BEAMS.filter(function (b) { return b.lane < 0 || b.lane === f.lane; });
+      f.beam = ok[Math.floor(Math.random() * ok.length)];
+      if (initial && f.x > f.beam.x) f.beam = null;
+    }
+  }
+  for (var q = 0; q < 64; q++) {
+    var sp = glowSprite(0.62); scene.add(sp);
+    var trail = [glowSprite(0.5), glowSprite(0.4), glowSprite(0.3), glowSprite(0.22)];
+    trail.forEach(function (t) { scene.add(t); });
+    var f = { s: sp, tr: trail, hist: [] }; resetFlow(f, true); flows.push(f);
+  }
+  var reFlows = [];
+  for (var r2 = 0; r2 < 7; r2++) { var rs = glowSprite(0.75); scene.add(rs); reFlows.push({ s: rs, p: r2 / 7 * 2 }); }
+
+  var token = glowSprite(2.1); scene.add(token);
+  var tokenCore = glowSprite(0.7); scene.add(tokenCore);
+
+  var bursts = [];
+  hooks.exit = function (name) {
+    var lane = Math.floor(Math.random() * LANES.length), x = 8 + Math.random() * 46;
+    var p = lanePt(lane, x);
+    var sp = glowSprite(1.1); sp.position.copy(p); scene.add(sp);
+    var el = document.createElement("div"); el.className = "tag exit"; el.textContent = name; tagLayer.appendChild(el);
+    bursts.push({ s: sp, base: p.clone(), t: 0, el: el });
+  };
+  hooks.lane = function () {};
+
+  /* labels */
+  var tagLayer = $("#tags"), tags = [];
+  function addTag(html, pos, cls, w, far) { var el = document.createElement("div"); el.className = "tag " + (cls || ""); el.innerHTML = html; tagLayer.appendChild(el); tags.push({ el: el, pos: pos, w: w || function () { return 1; }, far: !!far, on: false }); }
+  var sNow = 0;
+  function focus(c, width) { var v = Math.max(0, 1 - Math.abs(sNow - c) / (width || 1)); return v * v * (3 - 2 * v); }
+
+  NODE_DEFS.forEach(function (d, i) {
+    var yOff = -(nodes[i].top + (d.ring ? 1.5 : 0.75));
+    addTag(d.label, V(d.x, yOff, 0), "node", function () { return 0.55 + 0.45 * focus(chi(d.ch), 1.2); });
+  });
+  addTag("Re-engaged", V(6, 2.9, -0.2), "re", function () { return focus(chi("reengage"), 1.1); }, true);
+  addTag("Skips the welcome and both waits", bypass.getSpacedPoints(2)[1].clone().add(V(0, 0.9, 0)), "re", function () { return focus(chi("reengage"), 1.1); }, true);
+  LANES.forEach(function (l, i) {
+    addTag(l.name, V(LANE_END + 1.2, l.y, 0), "lane", function () {
+      var base = Math.max(focus(chi("branch"), 1.2), focus(chi("tracks"), 1.3));
+      return laneFocus < 0 ? base : base * (laneFocus === i ? 1 : 0.35);
+    }, true);
+  });
+  DAYS.forEach(function (dd, k) {
+    addTag(k === 0 ? "Day 0 · email 1 + text" : "Day " + dd + " · email " + (k + 1), V(38.5 + dd * 1.3, LANES[0].y + 1.1, 0), "lane", function () { return focus(chi("tracks"), 1.1); }, true);
+  });
+  BEAMS.forEach(function (b) {
+    addTag(b.name, V(b.base.x, b.base.y + 7.6, 0), "exit", function () {
+      var v = focus(chi("exit"), 1.1); if (b.name === "Disqualified") v = Math.max(v, 0.9 * focus(chi("reengage"), 1.1)); return v;
+    }, true);
+  });
+  [[0, "12 am"], [6, "6 am"], [12, "12 pm"], [18, "6 pm"]].forEach(function (a) {
+    var t = theta(a[0]), rr2 = DR + 1.05;
+    addTag(a[1], V(DIAL.x + Math.cos(t) * rr2, DIAL.y + Math.sin(t) * rr2, 0), "dial", function () { return focus(chi("window"), 1.2); }, true);
+  });
+  (function () { var t = theta(15.5), rr3 = DR - 1.25; addTag("<b>Send window</b><br>12 pm to 7 pm EDT", V(DIAL.x + Math.cos(t) * rr3, DIAL.y + Math.sin(t) * rr3 + 0.1, 0), "window", function () { return focus(chi("window"), 1.2); }, true); })();
+
+  /* camera keyframes, one per chapter */
+  var KF = {
+    hero: { c: [64, 16, 44], l: [22, 0, 0], tx: 0, tv: 1 },
+    form: { c: [-1.6, 0.9, 9.2], l: [0.6, 0, 0], tx: 0, tv: 1 },
+    "new": { c: [4.6, 1.1, 8.8], l: [6.6, 0, 0], tx: 6, tv: 1 },
+    exit: { c: [30.5, 16, 66], l: [30.5, 3, 0], tx: 6, tv: 1 },
+    mc: { c: [10.4, 1.3, 8.8], l: [12.6, 0, 0], tx: 12, tv: 1 },
+    wait5: { c: [14.4, 1.4, 8.6], l: [16.6, 0, 0], tx: 16, tv: 1 },
+    welcome: { c: [20.2, 1.8, 11], l: [22.2, 0, 0], tx: 23.5, tv: 1 },
+    wait1: { c: [25.8, 1.4, 8.8], l: [28, 0, 0], tx: 27.5, tv: 1 },
+    branch: { c: [33.5, 2.4, 20], l: [38, 0, 0], tx: 32, tv: 1 },
+    tracks: { c: [50, 3, 40], l: [50, 0, 0], tx: 38.5, tv: 1 },
+    window: { c: [70, 0.4, 18], l: [70, 0, 0], tx: LANE_END, tv: 0.6 },
+    reengage: { c: [23, 8, 54], l: [23, 3.5, 0], tx: 38.5, tv: 0 },
+    faq: { c: [36, 24, 78], l: [34, 0, 0], tx: 38.5, tv: 0 },
+    speed: { c: [20.4, 3.5, 28], l: [20.4, 0, 0], tx: 16, tv: 1 }
+  };
+  var K = ids.map(function (id) { return KF[id]; });
+
+  /* theme */
+  var T = {};
+  function applyTheme() {
+    ["bg", "node", "grid", "lead", "router", "track", "window", "exit", "reengage", "muted", "fg"].forEach(function (k) { T[k] = new THREE.Color(tok("--" + k) || "#888"); });
+    var dark = isDark(), blend = dark ? THREE.AdditiveBlending : THREE.NormalBlending;
+    scene.fog.color.copy(T.bg); renderer.setClearColor(T.bg, 1);
+    skyMat.uniforms.uBg.value.copy(T.bg); skyMat.uniforms.uA.value.copy(T.router); skyMat.uniforms.uB.value.copy(T.track); skyMat.uniforms.uC.value.copy(T.lead); skyMat.uniforms.uAmt.value = dark ? 0.2 : 0.12;
+    hemi.groundColor.copy(T.bg); hemi.intensity = dark ? 0.8 : 1.05; sun.intensity = dark ? 0.6 : 0.5;
+    leadLight.color.copy(T.lead);
+    glows.forEach(function (m) { m.blending = blend; m.needsUpdate = true; });
+    nodes.forEach(function (n) {
+      n.mesh.material.color.copy(T.node); n.mesh.material.emissive.copy(T[n.key]); n.edge.material.color.copy(T[n.key]); n.mesh.material.envMapIntensity = dark ? 0.55 : 0.9;
+      if (!n.plain) n.face.material.color.copy(T[n.key]);
+      n.halo.material.color.copy(T[n.key]);
+      if (n.ring) n.ring.material.color.copy(T[n.key]);
+    });
+    mainTube.material.uniforms.uColor.value.copy(T.router); mainTube.material.uniforms.uBoost.value = dark ? 1.4 : 0.2;
+    laneTubes.forEach(function (t) { t.material.uniforms.uColor.value.copy(T.track); t.material.uniforms.uBoost.value = dark ? 1.4 : 0.2; });
+    beads.forEach(function (b) { b.m.material.color.copy(T.track); b.m.material.emissive.copy(T.track); b.glow.material.color.copy(T.track); });
+    BEAMS.forEach(function (b) { b.core.material.color.copy(T.exit); b.soft.material.color.copy(T.exit); });
+    bypassTube.material.uniforms.uColor.value.copy(T.reengage); bypassTube.material.uniforms.uBoost.value = dark ? 1.4 : 0.2;
+    dialRing.material.color.copy(T.muted); tickMat.color.copy(T.muted);
+    winArc.material.color.copy(T.window); dialGlow.material.color.copy(T.window);
+    hand.material.color.copy(T.fg); heldMat.color.copy(T.lead);
+    sendDot.material.color.copy(T.exit); sendCore.material.color.copy(T.exit);
+    floorMat.color.copy(T.grid); dustMat.color.copy(T.grid); floorMat.opacity = dark ? 0.55 : 0.7;
+    flows.forEach(function (f) { f.s.material.color.copy(T.lead); f.tr.forEach(function (t) { t.material.color.copy(T.lead); }); });
+    reFlows.forEach(function (f) { f.s.material.color.copy(T.reengage); });
+    token.material.color.copy(T.lead); tokenCore.material.color.set(dark ? 0xffffff : T.lead);
+    T.dark = dark;
+  }
+  applyTheme();
+  matchMedia("(prefers-color-scheme: light)").addEventListener("change", applyTheme);
+  new MutationObserver(applyTheme).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  /* size */
+  var W = 0, H = 0;
+  function resize() {
+    W = innerWidth; H = innerHeight;
+    renderer.setSize(W, H, false);
+    camera.aspect = W / H;
+    if (W > 760) camera.setViewOffset(W, H, -W * 0.19, 0, W, H);
+    else camera.setViewOffset(W, H, 0, H * 0.2, W, H);
+    camera.fov = W > 760 ? 38 : 50;
+    camera.updateProjectionMatrix();
+  }
+  addEventListener("resize", resize); resize();
+
+  var mx = 0, my = 0, pmx = 0, pmy = 0;
+  addEventListener("pointermove", function (e) { mx = e.clientX / W * 2 - 1; my = e.clientY / H * 2 - 1; }, { passive: true });
+
+  /* loop */
+  var tmp = new THREE.Vector3(), cpos = new THREE.Vector3(), clook = new THREE.Vector3(), proj = new THREE.Vector3();
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function ease(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+  var last = performance.now(), time = 0;
+  sNow = targetS();
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    var dt = Math.min(0.05, (now - last) / 1000); last = now; time += dt; U.uTime.value = time;
+    var sT = targetS();
+    sNow += (sT - sNow) * (reduce ? 1 : 1 - Math.exp(-dt * 4.2));
+    if (Math.abs(sT - sNow) < 1e-4) sNow = sT;
+    chrome(sNow);
+
+    var i = Math.min(K.length - 2, Math.floor(sNow)), f = ease(Math.min(1, Math.max(0, sNow - i)));
+    var A = K[i], B = K[i + 1];
+    cpos.set(lerp(A.c[0], B.c[0], f), lerp(A.c[1], B.c[1], f), lerp(A.c[2], B.c[2], f));
+    clook.set(lerp(A.l[0], B.l[0], f), lerp(A.l[1], B.l[1], f), lerp(A.l[2], B.l[2], f));
+    if (!reduce) {
+      pmx += (mx - pmx) * 0.05; pmy += (my - pmy) * 0.05;
+      cpos.x += pmx * 0.7 + Math.sin(time * 0.25) * 0.25; cpos.y += -pmy * 0.45 + Math.sin(time * 0.31) * 0.15;
+    }
+    camera.position.copy(cpos); camera.lookAt(clook);
+
+    /* token */
+    var tx = lerp(A.tx, B.tx, f), tv = lerp(A.tv, B.tv, f);
+    lanePt(0, tx, tmp); tmp.y += hop(tx); tmp.z = 0.35;
+    token.position.copy(tmp); tokenCore.position.copy(tmp);
+    var pulse = 1 + Math.sin(time * 3) * 0.08;
+    token.scale.setScalar(2.1 * pulse); token.material.opacity = tv * (T.dark ? 0.95 : 0.8); tokenCore.material.opacity = tv;
+    leadLight.position.copy(tmp).add(V(0, 0, 1.2)); leadLight.intensity = 1.4 * tv;
+
+    /* nodes */
+    nodes.forEach(function (n) {
+      var target = focus(chi(n.ch), 0.9);
+      if (n.ch === "wait5") target = Math.max(target, focus(chi("speed"), 0.9));
+      if (n.ch === "wait1") target = Math.max(target, 0.5 * focus(chi("speed"), 0.9));
+      n.h += (target - n.h) * Math.min(1, dt * 5);
+      n.mesh.material.emissiveIntensity = n.h * (T.dark ? 0.32 : 0.1);
+      n.edge.material.opacity = (T.dark ? 0.22 : 0.3) + n.h * 0.7;
+      n.halo.material.opacity = n.h * (T.dark ? 0.5 : 0.28);
+      var sc = 1 + n.h * 0.07; n.grp.scale.set(sc, sc, sc);
+      if (n.ring) { n.ring.rotation.z -= dt * (0.4 + n.h * 2.2) * (n.ch === "wait5" ? Math.sqrt(300 / speedSec) : 1); n.ring.material.opacity = 0.3 + n.h * 0.7; }
+    });
+
+    var wBranch = focus(chi("branch"), 1.2), wTracks = focus(chi("tracks"), 1.3), wExit = focus(chi("exit"), 1.1), wRe = focus(chi("reengage"), 1.1), wWin = focus(chi("window"), 1.3);
+    laneTubes.forEach(function (t, li) {
+      var o = 0.32 + 0.45 * Math.max(wBranch, wTracks);
+      if (laneFocus >= 0) o *= laneFocus === li ? 1.5 : 0.35;
+      t.material.uniforms.uOpacity.value = Math.min(1, o);
+    });
+    beads.forEach(function (b) {
+      var o = 0.25 + 0.75 * wTracks; if (laneFocus >= 0 && laneFocus !== b.lane) o *= 0.35;
+      b.glow.material.opacity = o * (T.dark ? 0.55 : 0.3);
+      var s = 1 + 0.25 * wTracks * (0.5 + 0.5 * Math.sin(time * 2.4 - b.k * 0.8));
+      b.m.scale.setScalar(s);
+    });
+    BEAMS.forEach(function (b) {
+      var o = 0.06 + 0.94 * wExit; if (b.name === "Disqualified") o = Math.max(o, wRe * 0.9);
+      b.core.material.opacity = 0.7 * o; b.soft.material.opacity = 0.1 * o;
+    });
+    bypassTube.material.uniforms.uOpacity.value = 0.14 + 0.8 * wRe;
+    mainTube.material.uniforms.uOpacity.value = 0.45 + 0.3 * (1 - wRe);
+    dialGlow.material.opacity = (T.dark ? 0.16 : 0.1) + 0.2 * wWin;
+
+    handNow += (handTarget - handNow) * Math.min(1, dt * 8);
+    hand.rotation.z = -handNow / 24 * Math.PI * 2;
+    sendDot.scale.setScalar(1.6 + Math.sin(time * 4) * 0.2);
+
+    /* flowing leads */
+    var flowSpeed = reduce ? 0.35 : 1;
+    flows.forEach(function (fl) {
+      if (fl.rise >= 0) {
+        fl.rise += dt * 3.2 * flowSpeed;
+        fl.s.position.y = fl.beam.base.y + fl.rise;
+        fl.alpha = Math.max(0, 1 - fl.rise / 7);
+        fl.s.material.color.copy(T.lead).lerp(T.exit, Math.min(1, fl.rise / 1.5));
+        if (fl.rise > 7) { fl.s.material.color.copy(T.lead); resetFlow(fl, false); }
+      } else {
+        fl.x += dt * fl.speed * flowSpeed;
+        if (fl.beam && fl.x >= fl.beam.x) { fl.x = fl.beam.x; fl.rise = 0; fl.s.position.copy(fl.beam.base); }
+        else if (fl.x > LANE_END) { resetFlow(fl, false); }
+        else { lanePt(fl.lane, Math.max(0, fl.x), fl.s.position); fl.alpha = fl.x < 0 ? 0 : Math.min(1, fl.x / 1.5, (LANE_END - fl.x) / 2); }
+      }
+      var dim = laneFocus >= 0 && fl.x > 32 && fl.lane !== laneFocus ? 0.25 : 1;
+      var boost = fl.rise >= 0 ? 0.6 + 0.4 * wExit : 1;
+      var fo = fl.alpha * dim * boost * (T.dark ? 0.85 : 0.75) * (1 - 0.6 * wRe);
+      fl.s.material.opacity = fo;
+      if (fl.hist.length > 13) fl.hist.pop();
+      fl.hist.unshift(fl.s.position.clone());
+      for (var ti = 0; ti < fl.tr.length; ti++) { var hp = fl.hist[(ti + 1) * 3]; if (hp) { fl.tr[ti].position.copy(hp); fl.tr[ti].material.opacity = fo * (0.55 - ti * 0.12); } else fl.tr[ti].material.opacity = 0; }
+    });
+    reFlows.forEach(function (rf) {
+      rf.p += dt * 0.16 * flowSpeed; if (rf.p > 2) rf.p -= 2;
+      if (rf.p < 1) bypassPt(rf.p, rf.s.position);
+      else lanePt(0, 38.5 + (rf.p - 1) * (LANE_END - 38.5), rf.s.position);
+      var edge = Math.min(1, rf.p * 6, (2 - rf.p) * 6);
+      rf.s.material.opacity = edge * (0.12 + 0.88 * wRe);
+    });
+
+    for (var b = bursts.length - 1; b >= 0; b--) {
+      var br = bursts[b]; br.t += dt;
+      br.s.position.set(br.base.x, br.base.y + br.t * 3, 0.2);
+      br.s.material.color.copy(T.lead).lerp(T.exit, Math.min(1, br.t));
+      var al = Math.max(0, 1 - br.t / 2.6); br.s.material.opacity = al;
+      proj.copy(br.s.position).add(V(0, 0.9, 0)).project(camera);
+      br.el.style.opacity = al; br.el.style.transform = "translate(" + ((proj.x * 0.5 + 0.5) * W) + "px," + ((-proj.y * 0.5 + 0.5) * H) + "px) translate(-50%,-50%)";
+      if (br.t > 2.6) { scene.remove(br.s); br.el.remove(); bursts.splice(b, 1); }
+    }
+
+    dust.rotation.y = Math.sin(time * 0.05) * 0.02;
+
+    /* labels */
+    for (var t = 0; t < tags.length; t++) {
+      var tg = tags[t];
+      proj.copy(tg.pos).project(camera);
+      var vis = proj.z < 1 && proj.x > -1.2 && proj.x < 1.2 && proj.y > -1.2 && proj.y < 1.2;
+      var o = 0;
+      if (vis) {
+        var dist = camera.position.distanceTo(tg.pos);
+        o = tg.w() * (tg.far ? 1 : Math.min(1, Math.max(0, (36 - dist) / 8)));
+      }
+      if (o < 0.02) { if (tg.on) { tg.el.style.opacity = 0; tg.on = false; } continue; }
+      tg.on = true;
+      tg.el.style.opacity = o.toFixed(3);
+      tg.el.style.transform = "translate(" + ((proj.x * 0.5 + 0.5) * W).toFixed(1) + "px," + ((-proj.y * 0.5 + 0.5) * H).toFixed(1) + "px) translate(-50%,-50%)";
+    }
+
+    sky.position.copy(camera.position);
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
